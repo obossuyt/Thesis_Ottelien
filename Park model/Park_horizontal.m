@@ -8,6 +8,7 @@ options.AreaAveraging=false;
 
 options.ParkModel=1; %1: Park 1 model (Correctionfactor in front of sqrt(1-CT)); 2: Park 2 model
 options.WakeReflection=true; % True: include wake reflection; False: no wake reflection
+options.WTdata=2; %1: LES simulations; 2: WMR turbine
 
 options.MakePlots=true;
 
@@ -15,7 +16,7 @@ k=0.04;             % Wake decay coefficient
 
 %% SET height for plot
 
-H=106; 
+H=106;
 
 %% DATA
 abl0vec = [236.3 243.1 236.7]; % From Nicolai, ASSUMED TRUE INFLOW DIRECTION AT HUB HEIGHT
@@ -30,8 +31,16 @@ D=154;
 Hhub=106;
 
 %WTdata=xlsread('TurbineData.xlsx','Turbine2rescaled');
+if  options.WTdata==1
 data=load('TurbineData.mat');
 WTdata=data.WTdata;
+elseif options.WTdata==2
+
+data=load('WMRturbine.mat');
+WTdata=data.WMRdata;
+end
+
+
 WSvec=WTdata(:,1);
 [windturbine.WSvec,idx]=unique(WSvec);
 windturbine.CPvec=WTdata(idx,2);
@@ -43,8 +52,8 @@ windturbine.Hhub=Hhub;
 % Westermost Rough Wind Farm
 dataCo=load('WTcoord.mat');
 dataCo=dataCo.WTcoord;
-WTx=[dataCo([1 8 15],1)]; % [1 8 15]
-WTy=[dataCo([1 8 15],2)];
+WTx=[dataCo([1 8 15 20],1)]; % [1 8 15]
+WTy=[dataCo([1 8 15 20],2)];
 
 WTx=WTx-WTx(1); % move to x=0 for WT A01
 WTy=WTy-WTy(1); % move to y=0 for WT A01
@@ -66,6 +75,9 @@ windfarm.WTlocx=B(:,1);
 windfarm.WTlocy=B(:,2);
 
 N=length(windfarm.WTlocx);
+% if (N ~= length(windfarm.WTlocy))
+%     error('Mistake in defining wind farm! WTlocx and WTlocy should have the same length.')
+% end
 
 % Wind direction in windDir coord (N=0°, E=90°, S=180°, W=270°)
 windfarm.theta=270*ones(1,length(windfarm.WTlocx));
@@ -89,8 +101,6 @@ y=-Dmax*D+min(windfarm.WTlocy):dy:max(windfarm.WTlocy)+Dmax*D;   % y spacing gri
 wake = funPark_atWindTurbines(windfarm,windturbine,U0,k,x,options);
 
 %% Define wind speed at specific locations
-
-% Define in which wakes every point is located
 
 T=tic;
 % Loop over all wanted locations
