@@ -1,4 +1,4 @@
-function wake = funPark_atWindTurbines(windfarm,windturbine,U0,k,x,options)
+function wake = Park_atWindTurbines(windfarm,windturbine,U0,k,x,options)
 
 
 % SPmethod=options.SPmethod;
@@ -84,13 +84,15 @@ for i=2:N
         term3=wake(i).Aoverlap(j)/wake(i).A;
         wake(i).delta(j)=term1*term2*term3;
         
-        if k*wake(i).X(j)>2*Hhub-D && options.WakeReflection % Add deficit due to wake reflection as well
+        if -Hhub+D/2+k*wake(i).X(j)> Hhub && options.WakeReflection
             if strcmp(options.SPmethod,'lin')
                 wake(i).deltatot=wake(i).deltatot+2*wake(i).delta(j);
             elseif strcmp(options.SPmethod,'quadr')
                 wake(i).deltatot=wake(i).deltatot+2*wake(i).delta(j)^2;
             elseif strcmp(options.SPmethod,'max')
-                wake(i).deltatot=max(wake(i).deltatot, wake(i).delta(j));     
+                wake(i).deltatot=max(wake(i).deltatot, wake(i).delta(j)); 
+%             elseif strcmp(options.SPmethod,'energy')
+%                 wake(i).deltatot=wake(i).deltatot+2*(1-wake(i).delta(j))^2;
             end
         else
             if strcmp(options.SPmethod,'lin')
@@ -98,7 +100,9 @@ for i=2:N
             elseif strcmp(options.SPmethod,'quadr')
                 wake(i).deltatot=wake(i).deltatot+wake(i).delta(j)^2;
             elseif strcmp(options.SPmethod,'max')
-                wake(i).deltatot=max(wake(i).deltatot, wake(i).delta(j));     
+                wake(i).deltatot=max(wake(i).deltatot, wake(i).delta(j));
+%                 elseif strcmp(options.SPmethod,'energy')
+%                 wake(i).deltatot=wake(i).deltatot+(1-wake(i).delta(j))^2;
             end
         end
         
@@ -106,6 +110,8 @@ for i=2:N
     end
     
     if strcmp(options.SPmethod,'quadr')
+        wake(i).deltatot=sqrt(wake(i).deltatot);
+    elseif strcmp(options.SPmethod,'energy')
         wake(i).deltatot=sqrt(wake(i).deltatot);
     end
     wake(i).U=wake(i).Vtemp(i-1)/(1-wake(i).delta(i-1));

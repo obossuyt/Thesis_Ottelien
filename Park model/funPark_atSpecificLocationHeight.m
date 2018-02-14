@@ -1,4 +1,4 @@
-function [deltatot,V]= funPark_atSpecificLocationHeight(X,Y,windfarm,windturbine,wake,k,options,H)
+function [deltatot,V]= Park_atSpecificLocationHeight(X,Y,windfarm,windturbine,wake,k,options,H)
 N=length(windfarm.WTlocx);
 D=windturbine.D;
 Hhub=windturbine.Hhub;
@@ -49,7 +49,7 @@ for i=1:N
         end
         res=term1*term2*term3;
         
-       if k*dist>2*Hhub-D && options.WakeReflection % Add deficit due to wake reflection as well
+       if -Hhub+D/2+k*dist>H && options.WakeReflection % Add deficit due to wake reflection as well
             if strcmp(options.SPmethod,'lin')
                 delta=delta+2*res;
             elseif strcmp(options.SPmethod,'quadr')
