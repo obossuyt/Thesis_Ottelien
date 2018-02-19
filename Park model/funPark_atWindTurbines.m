@@ -20,6 +20,7 @@ wake(1).U=U0;
 wake(1).V=U0;
 wake(1).CT=interp1(WSvec,CTvec,wake(1).U);
 wake(1).delta=0;
+wake(1).deltatot=0;
 
 alpha=mod((270-theta),360); %Conversion to conventional degree formulation
 
@@ -41,8 +42,8 @@ for i=1:N
     rData = rotM*[xW;yW]; % compute 2-by-N array of rotated data
     
     % Rotated wake centerline
-    rData2=rotM*[linspace(0,x(end)-WTlocx(i),length(x));...
-        linspace(0,0,length(x))];
+    xx=linspace(0,x(end)-WTlocx(i),length(x));
+    rData2=rotM*[xx;0*xx];
     wake(i).xCenterline=rData2(1,:)+WTlocx(i);
     wake(i).yCenterline=rData2(2,:)+WTlocy(i);
     
@@ -90,9 +91,9 @@ for i=2:N
             elseif strcmp(options.SPmethod,'quadr')
                 wake(i).deltatot=wake(i).deltatot+2*wake(i).delta(j)^2;
             elseif strcmp(options.SPmethod,'max')
-                wake(i).deltatot=max(wake(i).deltatot, wake(i).delta(j)); 
-%             elseif strcmp(options.SPmethod,'energy')
-%                 wake(i).deltatot=wake(i).deltatot+2*(1-wake(i).delta(j))^2;
+                wake(i).deltatot=max(wake(i).deltatot, wake(i).delta(j));
+                %             elseif strcmp(options.SPmethod,'energy')
+                %                 wake(i).deltatot=wake(i).deltatot+2*(1-wake(i).delta(j))^2;
             end
         else
             if strcmp(options.SPmethod,'lin')
@@ -101,8 +102,8 @@ for i=2:N
                 wake(i).deltatot=wake(i).deltatot+wake(i).delta(j)^2;
             elseif strcmp(options.SPmethod,'max')
                 wake(i).deltatot=max(wake(i).deltatot, wake(i).delta(j));
-%                 elseif strcmp(options.SPmethod,'energy')
-%                 wake(i).deltatot=wake(i).deltatot+(1-wake(i).delta(j))^2;
+                %                 elseif strcmp(options.SPmethod,'energy')
+                %                 wake(i).deltatot=wake(i).deltatot+(1-wake(i).delta(j))^2;
             end
         end
         
@@ -117,4 +118,39 @@ for i=2:N
     wake(i).U=wake(i).Vtemp(i-1)/(1-wake(i).delta(i-1));
     wake(i).V=wake(i).U*(1-wake(i).deltatot);
     wake(i).CT=interp1(WSvec,CTvec,wake(i).V);
+    
+end
+
+
+
+if options.YawError
+    for i=1:N
+        if abs(windfarm.yawerror(i))>0
+            % update centerline and wake profile, CT value needed
+            xx=linspace(0,x(end)-WTlocx(i),length(x));
+            beta_yaw=0.09;
+            gamma=windfarm.yawerror(i);
+            eta_init=1/2*(cosd(gamma))^2*sind(gamma)*wake(i).CT./(1+beta_yaw*xx/D).^2;
+            term11=15*( beta_yaw.*xx/D +1).^4;
+            term12=15*beta_yaw/D.*(beta_yaw.*xx/D+1).^5;
+            deltay=eta_init .* (term11 + eta_init.^2)./term12 - eta_init.*D.*(15+eta_init.^2)./(15*beta_yaw);
+            rData2=rotM*[xx ; deltay];
+            
+            wake(i).xCenterline=rData2(1,:)+WTlocx(i);
+            wake(i).yCenterline=rData2(2,:)+WTlocy(i);
+            
+            Rwake=1/2*(D+2*k*xx);
+            
+            yWakeup=wake(i).yCenterline(1:end)+Rwake(1:end)-WTlocy(i);
+            yWakedown=wake(i).yCenterline(1:end)-Rwake(1:end)-WTlocy(i);
+                    
+            wake(i).xWake=[0+WTlocx(i), -D/2*sind(gamma)+WTlocx(i), wake(i).xCenterline(2:end), fliplr(wake(i).xCenterline(2:end)), D/2*sind(gamma)+WTlocx(i), 0+WTlocx(i)]+0.0001;
+            wake(i).yWake=[0, D/2*cosd(gamma), yWakeup(2:end), fliplr(yWakedown(2:end)), -D/2*cosd(gamma),0]+WTlocy(i);
+            %
+            plot(wake(i).xWake,wake(i).yWake,'r');
+            hold on
+            plot(wake(i).xCenterline,wake(i).yCenterline,'r--');
+        end
+    end
+end
 end
